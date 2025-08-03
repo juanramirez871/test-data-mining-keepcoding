@@ -20,14 +20,14 @@ df_madrid <- df_madrid[, c("Neighbourhood", "Accommodates", "Bathrooms",
                            "Bedrooms", "Beds", "Price", "Square.Feet", 
                            "Guests.Included", "Extra.People", 
                            "Review.Scores.Rating", "Latitude", "Longitude")]
-df_madrid[1:5, ]  # Mostrar las primeras 5 filas
+df_madrid[1:5, ]
 ```
 
 ```{r}
 # Paso 2: Crear columna metros cuadrados
 
 df_madrid$Square.Meters <- df_madrid$Square.Feet * 0.092903
-df_madrid[, c("Square.Feet", "Square.Meters")][1:5, ]  # Mostrar ejemplo
+df_madrid[, c("Square.Feet", "Square.Meters")][1:5, ]
 ```
 
 ```{r}
@@ -96,20 +96,12 @@ head(pvals)
 ```{r}
 # Paso 11: Matriz de distancias y dendrograma
 
-# Obtener la tabla de resultados del test de Tukey
 tukey_df <- as.data.frame(tukey$Neighbourhood)
-
-# Extraer los nombres de barrios comparados (ej. "A-B")
 comparisons <- strsplit(rownames(tukey_df), "-")
-
-# Lista única de barrios
 barrios <- unique(unlist(comparisons))
-
-# Crear matriz cuadrada de p-valores
 p_matrix <- matrix(NA, nrow = length(barrios), ncol = length(barrios),
                    dimnames = list(barrios, barrios))
 
-# Rellenar matriz simétrica con los p-valores
 for (i in 1:nrow(tukey_df)) {
   b1 <- comparisons[[i]][1]
   b2 <- comparisons[[i]][2]
@@ -118,16 +110,10 @@ for (i in 1:nrow(tukey_df)) {
   p_matrix[b2, b1] <- pval
 }
 
-# Diagonal con 0 (distancia de un barrio consigo mismo)
 diag(p_matrix) <- 0
-
-# Convertir en matriz de distancias: distancia = 1 - pvalor
 dist_mat <- as.dist(1 - p_matrix)
-
-# Agrupamiento jerárquico
 hc <- hclust(dist_mat)
 
-# Dibujar dendrograma
 plot(hc, main = "Dendrograma de barrios", xlab = "", sub = "")
 
 ```
