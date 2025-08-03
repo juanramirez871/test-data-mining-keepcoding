@@ -188,11 +188,12 @@ pred_3habs
 pred_4habs
 ```
 
-```{r} # Paso 16: Rellenar NA con predicción del modelo
+```{r}
+# Paso 16: Rellenar NA con predicción del modelo
 
 df_madrid$Square.Meters_Pred <- predict(modelo, newdata = df_madrid)
-df_madrid$Square.Meters\[is.na(df_madrid$Square.Meters)] <-
-  df_madrid$Square.Meters_Pred\[is.na(df_madrid$Square.Meters)]
+df_madrid$Square.Meters[is.na(df_madrid$Square.Meters)] <-
+  df_madrid$Square.Meters_Pred[is.na(df_madrid$Square.Meters)]
 summary(df_madrid$Square.Meters)
 
 ```
