@@ -1,0 +1,139 @@
+---
+title: "Análisis AirBnB Madrid"
+format: html
+editor: visual
+---
+
+```{r}
+# Cargar dataset
+airbnb <- read.csv("airbnb-listings.csv", sep = ";")
+
+# Paso 1
+df_madrid <- subset(airbnb, City == "Madrid" & Room.Type == "Entire home/apt" & Neighbourhood != "")
+df_madrid <- df_madrid[, c("Neighbourhood", "Accommodates", "Bathrooms", 
+                           "Bedrooms", "Beds", "Price", "Square.Feet", 
+                           "Guests.Included", "Extra.People", 
+                           "Review.Scores.Rating", "Latitude", "Longitude")]
+```
+
+```{r}
+# Paso 2
+df_madrid$Square.Meters <- df_madrid$Square.Feet * 0.092903
+```
+
+```{r}
+# Paso 3
+percent_na <- mean(is.na(df_madrid$Square.Meters)) * 100
+percent_na
+```
+
+```{r}
+# Paso 4
+zeros <- sum(df_madrid$Square.Meters == 0, na.rm = TRUE)
+non_na <- sum(!is.na(df_madrid$Square.Meters))
+percent_zeros <- (zeros / non_na) * 100
+percent_zeros
+```
+
+```{r}
+# Paso 5
+df_madrid$Square.Meters[df_madrid$Square.Meters == 0] <- NA
+```
+
+```{r}
+# Paso 6
+hist(df_madrid$Square.Meters, main = "Histograma de metros cuadrados",
+     xlab = "Metros cuadrados", col = "skyblue", breaks = 30)
+```
+
+```{r}
+# Paso 7
+df_madrid$Square.Meters[df_madrid$Square.Meters < 20] <- NA
+```
+
+```{r}
+# Paso 8
+library(dplyr)
+df_madrid <- df_madrid %>%
+  group_by(Neighbourhood) %>%
+  filter(!all(is.na(Square.Meters))) %>%
+  ungroup()
+```
+
+```{r}
+# Paso 9
+anova_model <- aov(Square.Meters ~ Neighbourhood, data = df_madrid)
+summary(anova_model)
+```
+
+```{r}
+# Paso 10
+tukey <- TukeyHSD(anova_model)
+pvals <- tukey$Neighbourhood[, "p adj"]
+```
+
+```{r}
+# Paso 11
+library(stats)
+dist_mat <- as.dist(1 - tukey$Neighbourhood[, "p adj"])
+hc <- hclust(dist_mat)
+plot(hc, main = "Dendrograma de barrios", xlab = "", sub = "")
+```
+
+```{r}
+# Paso 12
+clusters <- cutree(hc, h = 0.8)
+df_madrid$neighb_id <- clusters[match(df_madrid$Neighbourhood, names(clusters))]
+```
+
+```{r}
+# Paso 13
+set.seed(123)
+train_idx <- sample(seq_len(nrow(df_madrid)), size = 0.7 * nrow(df_madrid))
+train <- df_madrid[train_idx, ]
+test <- df_madrid[-train_idx, ]
+
+modelo <- lm(Square.Meters ~ Accommodates + Bathrooms + Bedrooms + Beds +
+               Price + Guests.Included + Extra.People + 
+               Review.Scores.Rating + Latitude + Longitude + neighb_id,
+             data = train)
+summary(modelo)
+```
+
+```{r}
+# Paso 14: Evaluación
+pred_test <- predict(modelo, newdata = test)
+mse <- mean((test$Square.Meters - pred_test)^2, na.rm = TRUE)
+mse
+```
+
+```{r}
+# Paso 15: Predicción para apartamento hipotético
+nuevo <- data.frame(
+  Accommodates = 6,
+  Bathrooms = 1,
+  Bedrooms = 3,
+  Beds = 3,
+  Price = 80,
+  Guests.Included = 6,
+  Extra.People = 0,
+  Review.Scores.Rating = 80,
+  Latitude = mean(df_madrid$Latitude, na.rm = TRUE),
+  Longitude = mean(df_madrid$Longitude, na.rm = TRUE),
+  neighb_id = clusters["Sol"]
+)
+pred_3habs <- predict(modelo, newdata = nuevo)
+
+nuevo$Bedrooms <- 4
+pred_4habs <- predict(modelo, newdata = nuevo)
+
+pred_3habs
+pred_4habs
+```
+
+```{r}
+# Paso 16: Rellenar valores NA
+df_madrid$Square.Meters_Pred <- predict(modelo, newdata = df_madrid)
+df_madrid$Square.Meters[is.na(df_madrid$Square.Meters)] <- 
+  df_madrid$Square.Meters_Pred[is.na(df_madrid$Square.Meters)]
+```
